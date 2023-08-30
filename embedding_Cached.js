@@ -3,9 +3,9 @@
 
 import { Embeddings } from "langchain/embeddings/base";
 import { is_valid, console_log } from 'omnilib-utils/utils.js';
-import { DEFAULT_VECTORSTORE_NAME } from "../omni-docs/vectorstore.js";
-import { compute_chunk_id } from "../omni-docs/hashers.js";
-import { user_db_put, user_db_get, user_db_delete } from "../omnilib-utils/database.js"
+import { DEFAULT_VECTORSTORE_NAME } from "omnilib-docs/vectorstore.js";
+import { compute_chunk_id } from "omnilib-docs/hashers.js";
+import { user_db_put, user_db_get, user_db_delete } from "omnilib-utils/database.js"
 
 class Embedding_Cached extends Embeddings
 {
