@@ -2,10 +2,7 @@
   "name": "omnilib-docs",
   "version": "1.0.01",
   "dependencies": {
-    "gpt-tokenizer": "^2.1.1",
     "langchain": "^0.0.123",
-    "node-loader": "^2.0.0",
-    "omnilib-utils": "https://github.com/manu-sapiens/omnilib-utils.git#main",
-    "tiktoken-node": "^0.0.6"
+    "omnilib-utils": "https://github.com/manu-sapiens/omnilib-utils.git#main"
   }
 }
