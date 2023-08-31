@@ -1,7 +1,6 @@
 // chunking.js
 import { compute_chunk_id } from './hashers.js';
 import { get_cached_cdn, save_chunks_cdn_to_db, get_json_from_cdn, save_json_to_cdn_as_buffer} from 'omnilib-utils/cdn.js'
-import { countTokens } from './tiktoken.js';
 import { is_valid, console_log } from 'omnilib-utils/utils.js';
 
 const DEFAULT_CHUNK_SIZE = 512;
@@ -10,7 +9,7 @@ const DEFAULT_CHUNK_OVERLAP = 64;
 const AVERAGE_CHARACTER_PER_WORD = 5;
 const AVERAGE_WORD_PER_TOKEN = 0.75;
 
-async function break_chapter_into_chunks(ctx, text, vectorstore_name, hasher, embedder, splitter) {
+async function break_chapter_into_chunks(ctx, text, vectorstore_name, hasher, embedder, splitter, tokenCounterFunction) {
     const splitted_texts = await splitter.splitText(text);
   
     console_log(`[break_chapter_into_chunks] splitted texts # = ${splitted_texts.length}`);
@@ -22,7 +21,7 @@ async function break_chapter_into_chunks(ctx, text, vectorstore_name, hasher, em
   
         const chunk_id = compute_chunk_id(ctx, chunk_text, vectorstore_name, hasher);
         const chunk_embedding = await embedder.embedQuery(chunk_text);
-        const chunk_token_count = countTokens(chunk_text);
+        const chunk_token_count = tokenCounterFunction(chunk_text);
         const chunk_json = { text: chunk_text, id: chunk_id, token_count: chunk_token_count, embedding: chunk_embedding };
         console_log(`[break_chapter_into_chunks] [${splitted_texts.indexOf(chunk_text)}] splitted text (first 1024) = ${chunk_text.slice(0, 1024)}`);
         return chunk_json;
@@ -42,37 +41,37 @@ async function break_chapter_into_chunks(ctx, text, vectorstore_name, hasher, em
   }
 
 
-  async function process_chapter(ctx, chapter_text, vectorstore_name, hasher, embedder, splitter, chapter_id, overwrite, hasher_model, embedder_model, splitter_model)
+  async function processChapter(ctx, chapter_text, vectorstore_name, hasher, embedder, splitter, chapter_id, overwrite, hasher_model, embedder_model, splitter_model, tokenCounterFunction)
   {
   
       let chapter_cdn = await get_cached_cdn(ctx, chapter_id, overwrite);
       let chapter_json = null;
       if (is_valid(chapter_cdn))
       {
-          console_log(`[process_chapter] Found document_cdn: ${JSON.stringify(chapter_cdn)} in the DB under id: ${chapter_id}. Skipping chunking...`);
+          console_log(`[processChapter] Found document_cdn: ${JSON.stringify(chapter_cdn)} in the DB under id: ${chapter_id}. Skipping chunking...`);
           try
           {
               chapter_json = await get_json_from_cdn(ctx, chapter_cdn);
           }
           catch (error)
           {
-              console.warn(`[process_chapter] WARNING: could not get document_json from cdn`);
+              console.warn(`[processChapter] WARNING: could not get document_json from cdn`);
               chapter_cdn = null;
           }
       }
   
       if (!is_valid(chapter_cdn))
       {
-          console_log(`[process_chapter] Found no records for document id = ${chapter_id} in the DB. Chunking now...`);
+          console_log(`[processChapter] Found no records for document id = ${chapter_id} in the DB. Chunking now...`);
   
-          const chunker_results = await break_chapter_into_chunks(ctx, chapter_text, vectorstore_name, hasher, embedder, splitter);
+          const chunker_results = await break_chapter_into_chunks(ctx, chapter_text, vectorstore_name, hasher, embedder, splitter, tokenCounterFunction);
           const chapter_chunks = chunker_results.chunks;
   
           chapter_json = { id: chapter_id, hasher_model: hasher_model, embedder_model: embedder_model, splitter_model: splitter_model, vectorstore_name: vectorstore_name, chunks: chapter_chunks, chapters: [chapter_text] };
           chapter_cdn = await save_json_to_cdn_as_buffer(ctx, chapter_json);
   
           if (is_valid(chapter_cdn) == false) throw new Error(`ERROR: could not save document_cdn to cdn`);
-          console_log(`[process_chapter] document_cdn: = ${JSON.stringify(chapter_cdn)}`);
+          console_log(`[processChapter] document_cdn: = ${JSON.stringify(chapter_cdn)}`);
   
           const success = await save_chunks_cdn_to_db(ctx, chapter_cdn, chapter_id);
           if (success == false) throw new Error(`ERROR: could not save document_cdn to db`);
@@ -202,6 +201,6 @@ function collate_chapter_chunk(chapters, chunk, current_chapter_number, args)
 }
 
 
-export { process_chapter, collate_chapter_chunk }
+export { processChapter as processChapter, collate_chapter_chunk }
 export { DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP }
 export { AVERAGE_CHARACTER_PER_WORD, AVERAGE_WORD_PER_TOKEN }
